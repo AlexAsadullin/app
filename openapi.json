@@ -21,7 +21,9 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/OrderRequest" },
+              "schema": {
+                "$ref": "#/components/schemas/OrderRequest"
+              },
               "example": {
                 "name": "Гость Swagger",
                 "phone": "+7 900 000-00-42",
@@ -40,7 +42,9 @@
             "description": "Сервис ограничил частоту запросов. Учитывайте Retry-After и проверьте, не была ли заявка уже обработана.",
             "headers": {
               "Retry-After": {
-                "schema": { "type": "string" },
+                "schema": {
+                  "type": "string"
+                },
                 "description": "Сколько секунд ждать перед следующей попыткой, если сервер вернул этот заголовок."
               }
             }
@@ -50,19 +54,76 @@
           }
         }
       }
+    },
+    "/hello": {
+      "get": {
+        "tags": [
+          "Локальный пример"
+        ],
+        "summary": "Проверить GET endpoint",
+        "description": "Локальный тестовый маршрут Swagger. Не вызывает n8n и не создаёт заявку.",
+        "operationId": "helloWorld",
+        "servers": [
+          {
+            "url": "http://localhost:8000",
+            "description": "Локальный сервер разработки"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешный ответ Hello World",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string",
+                      "example": "Hello, world!"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Hello, world!"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
       "OrderRequest": {
         "type": "object",
-        "required": ["name", "phone", "zakaz"],
+        "required": [
+          "name",
+          "phone",
+          "zakaz"
+        ],
         "properties": {
-          "name": { "type": "string", "example": "Гость Swagger" },
-          "phone": { "type": "string", "example": "+7 900 000-00-42" },
-          "zakaz": { "type": "string", "example": "Тестовый заказ" },
-          "kommentariy": { "type": "string", "example": "Проверка API" },
-          "website": { "type": "string", "description": "Скрытое honeypot-поле; для обычной заявки оставить пустым.", "example": "" }
+          "name": {
+            "type": "string",
+            "example": "Гость Swagger"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+7 900 000-00-42"
+          },
+          "zakaz": {
+            "type": "string",
+            "example": "Тестовый заказ"
+          },
+          "kommentariy": {
+            "type": "string",
+            "example": "Проверка API"
+          },
+          "website": {
+            "type": "string",
+            "description": "Скрытое honeypot-поле; для обычной заявки оставить пустым.",
+            "example": ""
+          }
         }
       }
     }

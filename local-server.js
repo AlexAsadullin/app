@@ -9,6 +9,10 @@ const types = { '.html': 'text/html; charset=utf-8', '.json': 'application/json;
 http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   let file;
+  if (req.method === 'GET' && pathname === '/hello') {
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+    return res.end(JSON.stringify({ message: 'Hello, world!' }));
+  }
   if (pathname === '/swagger' || pathname === '/swagger/') file = path.join(root, 'swagger-local.html');
   else if (pathname === '/openapi.json') file = path.join(root, 'openapi.json');
   else if (pathname.startsWith('/swagger-ui/')) {
