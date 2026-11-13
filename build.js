@@ -9,7 +9,10 @@ fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(out, 'index.html'));
 
-const webhookUrl = process.env.WEBHOOK_URL;
+// Рабочий production webhook учебной цепочки n8n.
+// Можно переопределить WEBHOOK_URL в Vercel; адрес публичен и не является токеном.
+const DEFAULT_WEBHOOK_URL = 'https://kakakakaka.app.n8n.cloud/webhook/zayavka';
+const webhookUrl = process.env.WEBHOOK_URL || DEFAULT_WEBHOOK_URL;
 const environment = process.env.VERCEL_ENV || process.env.APP_ENV || 'локально';
 const config = {
   // Отсутствующая настройка намеренно представляется строкой "undefined",
