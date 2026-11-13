@@ -18,6 +18,9 @@
     button { font: inherit; font-weight: 600; padding: 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
     .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
     #status { min-height: 1.5em; font-size: 15px; }
+    .lesson { margin-top: 22px; background: #eaf2f7; border: 1px solid #c6d8e3; border-radius: 10px; padding: 14px; font-size: 14px; }
+    .lesson h2 { margin: 0 0 8px; font-size: 18px; }
+    .lesson code { overflow-wrap: anywhere; }
   </style>
 </head>
 <body>
@@ -47,17 +50,30 @@
     <button type="submit">Отправить</button>
     <p id="status" role="status"></p>
   </form>
+
+  <section class="lesson" aria-labelledby="lesson-title">
+    <h2 id="lesson-title">Учебная заметка: окружения и ответы</h2>
+    <p>Локальная среда работает на компьютере разработчика. Preview — тестовая публикация. Production — рабочая публикация. У них могут различаться переменные и данные.</p>
+    <p id="environment-status">Окружение: загрузка…</p>
+    <p><strong>F02:</strong> если WEBHOOK_URL отсутствует в Production, сборка может завершиться, а форма отправит запрос на <code>/undefined</code>. Ответ <code>NOT_FOUND</code> от Vercel означает, что запрос не дошёл до n8n.</p>
+    <p><strong>F01:</strong> текст <code>The requested webhook is not registered</code> в ответе n8n означает, что запрос дошёл до n8n, но рабочий webhook не зарегистрирован (например, workflow не активен).</p>
+    <p><strong>Дополнительный пример 401:</strong> это отказ в аутентификации. Проверьте подключение/учётные данные и права безопасным тестом; повтор запроса сам по себе не обновляет ключ. В F01–F07 отдельного журнала 401 нет.</p>
+    <p>В браузерной сборке WEBHOOK_URL становится видимым адресом назначения. Не помещайте в неё токен бота, пароль или другой секрет.</p>
+  </section>
 </main>
 
-<!-- config.js создаётся при сборке из переменной окружения WEBHOOK_URL (см. build.js) -->
+<!-- config.js содержит публичный адрес назначения; секреты сюда не помещать. -->
 <script src="config.js"></script>
 <script>
+  var appConfig = window.APP_CONFIG || { webhookUrl: 'undefined', environment: 'неизвестно', configured: false };
+  document.getElementById('environment-status').textContent = 'Окружение сборки: ' + appConfig.environment + ' · WEBHOOK_URL: ' + (appConfig.configured ? 'задана' : 'undefined');
+
   document.getElementById('zakaz-form').addEventListener('submit', async function (e) {
     e.preventDefault();
     var status = document.getElementById('status');
     var data = Object.fromEntries(new FormData(e.target).entries());
     try {
-      var res = await fetch(window.WEBHOOK_URL, {
+      var res = await fetch(appConfig.webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)

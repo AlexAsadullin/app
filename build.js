@@ -1,20 +1,28 @@
-// Сборка учебной копии: копирует index.html в public/ и пишет public/config.js
-// с адресом вебхука из переменной окружения WEBHOOK_URL.
-// Адрес в репозиторий не кладём — только в переменные окружения Vercel.
-// Если переменная не задана для окружения, в журнале сборки будет видно «undefined» (случай F02).
-
+// Учебная сборка для демонстрации F02.
+// WEBHOOK_URL — публичный адрес назначения формы, он попадёт в браузер.
+// Никогда не передавайте сюда токены, пароли или другие секреты.
 const fs = require('fs');
 const path = require('path');
 
 const out = path.join(__dirname, 'public');
+fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(out, 'index.html'));
 
-const url = process.env.WEBHOOK_URL;
+const webhookUrl = process.env.WEBHOOK_URL;
+const environment = process.env.VERCEL_ENV || process.env.APP_ENV || 'локально';
+const config = {
+  // Отсутствующая настройка намеренно представляется строкой "undefined",
+  // чтобы в учебном опыте запрос воспроизводил F02: POST /undefined.
+  webhookUrl: webhookUrl || 'undefined',
+  environment,
+  configured: Boolean(webhookUrl),
+};
 fs.writeFileSync(
   path.join(out, 'config.js'),
-  'window.WEBHOOK_URL = ' + JSON.stringify(url === undefined ? 'undefined' : url) + ';\n'
+  'window.APP_CONFIG = ' + JSON.stringify(config) + ';\n'
 );
 
-// В журнал пишем только, задана ли переменная, а не её значение.
-console.log('config.js записан: WEBHOOK_URL = ' + (url ? 'задана' : 'undefined'));
+// Значение адреса никогда не печатаем в журнал.
+console.log(`Сборка окружения: ${environment}`);
+console.log(`WEBHOOK_URL = ${webhookUrl ? 'задана' : 'undefined'}`);
