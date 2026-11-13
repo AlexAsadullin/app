@@ -4,11 +4,12 @@ const path = require('path');
 const root = __dirname;
 const publicDir = path.join(root, 'public');
 const logPath = path.join(root, 'actions.log');
-const port = Number(process.env.PORT || 8000);
+let port = Number(process.env.PORT || 8000);
+const explicitPort = Boolean(process.env.PORT);
 const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
 const allowedActions = new Set(['page_loaded','form_submit_attempt','rate_limit_blocked','submission_started','response_429','response_http_error','response_success','request_timeout','request_error','cooldown_expired']);
 
-http.createServer((req, res) => {
+const server = http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   if (req.method === 'POST' && pathname === '/__log') {
     let body = '';
@@ -41,4 +42,22 @@ http.createServer((req, res) => {
     if (error) { res.writeHead(404); return res.end('Not found'); }
     res.writeHead(200, { 'Content-Type': mime[path.extname(file)] || 'application/octet-stream' }); res.end(content);
   });
-}).listen(port, '127.0.0.1', () => console.log(`Local site: http://localhost:${port}/ (log: ${logPath})`));
+});
+
+function listen() {
+  server.once('error', error => {
+    if (error.code === 'EADDRINUSE' && !explicitPort && port < 8010) {
+      port += 1;
+      console.log(`Порт занят; пробую ${port}…`);
+      listen();
+      return;
+    }
+    console.error(`Не удалось запустить локальный сервер: ${error.message}`);
+    process.exitCode = 1;
+  });
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`Local site: http://localhost:${port}/ (log: ${logPath})`);
+  });
+}
+
+listen();
