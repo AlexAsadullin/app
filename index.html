@@ -78,31 +78,79 @@
   var cooldownStatus = document.getElementById('cooldown-status');
   var submitButton = document.querySelector('#zakaz-form button[type="submit"]');
   var cooldownTimer;
+  var requestInFlight = false;
+  var originalSubmitLabel = submitButton.textContent;
+  var violationNoticeKey = 'kofeynya-rate-limit-notice-at';
+
+  function logAction(action, extra) {
+    if (appConfig.environment !== 'локально') return;
+    var event = Object.assign({ action: action, time: new Date().toISOString(), environment: appConfig.environment }, extra || {});
+    fetch('/__log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(event), keepalive: true })
+      .catch(function () { console.warn('Локальный журнал недоступен.'); });
+  }
+
+  function reportRateLimitViolation(source) {
+    var now = Date.now();
+    var lastNotice = 0;
+    try { lastNotice = Number(localStorage.getItem(violationNoticeKey)) || 0; } catch (_) {}
+    if (now - lastNotice < cooldownMs) return;
+    try { localStorage.setItem(violationNoticeKey, String(now)); } catch (_) {}
+    var event = { type: 'rate_limit_violation', source: source, time: new Date(now).toISOString(), environment: appConfig.environment, route: '/webhook/zayavka' };
+    fetch(appConfig.rateLimitWebhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(event), keepalive: true })
+      .catch(function () { console.warn('Не удалось отправить уведомление о rate limit в n8n.'); });
+  }
 
   function savedNextAllowedAt() {
     try { return Number(localStorage.getItem(cooldownKey)) || 0; }
     catch (_) { return 0; }
   }
 
+  function blockRateLimitAttempt(until) {
+    startCooldown(until);
+    var status = document.getElementById('status');
+    status.className = 'rate-limit';
+    status.setAttribute('role', 'alert');
+    status.textContent = 'Слишком частые заявки: разрешена одна отправка за 10 секунд. Подождите окончания таймера.';
+    logAction('rate_limit_blocked', { retryAfterSeconds: Math.ceil((until - Date.now()) / 1000) });
+    reportRateLimitViolation('client_cooldown');
+  }
+
   function startCooldown(until) {
     clearInterval(cooldownTimer);
-    submitButton.disabled = Date.now() < until;
+    if (!until || until <= Date.now()) {
+      submitButton.disabled = requestInFlight;
+      submitButton.textContent = originalSubmitLabel;
+      cooldownStatus.textContent = '';
+      return;
+    }
     function updateCooldown() {
       var seconds = Math.ceil((until - Date.now()) / 1000);
+      submitButton.disabled = requestInFlight;
       if (seconds <= 0) {
         clearInterval(cooldownTimer);
-        submitButton.disabled = false;
+        submitButton.textContent = originalSubmitLabel;
         cooldownStatus.textContent = '';
+        logAction('cooldown_expired');
         return;
       }
-      submitButton.disabled = true;
-      cooldownStatus.textContent = 'Следующую заявку можно отправить через ' + seconds + ' сек.';
+      submitButton.textContent = 'Попытаться через ' + seconds + ' сек.';
+      cooldownStatus.textContent = 'Разрешена одна отправка раз в 10 секунд.';
     }
     updateCooldown();
     if (until > Date.now()) cooldownTimer = setInterval(updateCooldown, 250);
   }
 
+  submitButton.addEventListener('click', function (event) {
+    var until = savedNextAllowedAt();
+    if (Date.now() < until && !requestInFlight) {
+      event.preventDefault();
+      event.stopPropagation();
+      blockRateLimitAttempt(until);
+    }
+  });
+
   startCooldown(savedNextAllowedAt());
+  logAction('page_loaded');
   window.addEventListener('storage', function (event) {
     if (event.key === cooldownKey) startCooldown(Number(event.newValue) || 0);
   });
@@ -112,9 +160,10 @@
     var status = document.getElementById('status');
     var nextAllowedAt = savedNextAllowedAt();
     if (Date.now() < nextAllowedAt) {
-      startCooldown(nextAllowedAt);
+      blockRateLimitAttempt(nextAllowedAt);
       return;
     }
+    logAction('form_submit_attempt');
 
     var data = Object.fromEntries(new FormData(e.target).entries());
     var controller = new AbortController();
@@ -126,7 +175,9 @@
 
     var cooldownUntil = Date.now() + cooldownMs;
     try { localStorage.setItem(cooldownKey, String(cooldownUntil)); } catch (_) {}
+    requestInFlight = true;
     startCooldown(cooldownUntil);
+    logAction('submission_started');
     status.className = '';
     status.textContent = 'Отправляем заявку…';
     try {
@@ -137,6 +188,8 @@
         signal: controller.signal
       });
       if (res.status === 429) {
+        logAction('response_429');
+        reportRateLimitViolation('backend_429');
         var retryAfter = res.headers.get('Retry-After');
         status.className = 'rate-limit';
         status.setAttribute('role', 'alert');
@@ -145,23 +198,28 @@
         return;
       }
       if (!res.ok) {
+        logAction('response_http_error', { status: res.status });
         throw new Error('HTTP ' + res.status);
       }
       status.className = '';
       status.setAttribute('role', 'status');
       status.textContent = 'Заявка принята.';
+      logAction('response_success');
       e.target.reset();
     } catch (err) {
       status.className = 'error';
       status.setAttribute('role', 'alert');
       if (timedOut) {
+        logAction('request_timeout');
         status.textContent = 'Не получили ответ за 10 секунд. Это не значит, что n8n не принял заявку. Не отправляйте её повторно, пока не проверите выполнение в n8n.';
       } else {
+        logAction('request_error', { errorName: err.name });
         status.textContent = 'Не удалось подтвердить отправку (' + err.message + '). Проверьте выполнение в n8n перед повтором.';
       }
       console.error('Отправка заявки:', err);
     } finally {
       clearTimeout(timeoutId);
+      requestInFlight = false;
       startCooldown(savedNextAllowedAt());
     }
   });

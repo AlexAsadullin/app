@@ -4,3 +4,4 @@ public/
 !.env.example
 .vercel/
 node_modules/
+actions.log

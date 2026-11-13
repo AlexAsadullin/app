@@ -13,11 +13,13 @@ fs.copyFileSync(path.join(__dirname, 'index.html'), path.join(out, 'index.html')
 // Можно переопределить WEBHOOK_URL в Vercel; адрес публичен и не является токеном.
 const DEFAULT_WEBHOOK_URL = 'https://kakakakaka.app.n8n.cloud/webhook/zayavka';
 const webhookUrl = process.env.WEBHOOK_URL || DEFAULT_WEBHOOK_URL;
+const rateLimitWebhookUrl = process.env.RATE_LIMIT_WEBHOOK_URL || webhookUrl.replace(/\/zayavka(?=\/?$)/, '/rate-limit-violation');
 const environment = process.env.VERCEL_ENV || process.env.APP_ENV || 'локально';
 const config = {
   // Отсутствующая настройка намеренно представляется строкой "undefined",
   // чтобы в учебном опыте запрос воспроизводил F02: POST /undefined.
   webhookUrl: webhookUrl || 'undefined',
+  rateLimitWebhookUrl,
   environment,
   configured: Boolean(webhookUrl),
 };
