@@ -88,6 +88,36 @@
                 }
               }
             }
+          },
+          "429": {
+            "description": "Сработал лимит: один успешный запрос с этого клиента раз в 10 секунд.",
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Сколько секунд осталось ждать перед новой попыткой."
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "example": {
+                  "message": "Rate limit: one request per 10 seconds.",
+                  "retryAfter": 10
+                }
+              }
+            }
           }
         }
       }

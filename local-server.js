@@ -4,12 +4,27 @@ const path = require('path');
 const swaggerUiPath = require('swagger-ui-dist').getAbsoluteFSPath();
 const root = __dirname;
 const port = Number(process.env.PORT || 8000);
+const helloRequestTimes = new Map();
 const types = { '.html': 'text/html; charset=utf-8', '.json': 'application/json; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml' };
 
 http.createServer((req, res) => {
   const pathname = new URL(req.url, 'http://localhost').pathname;
   let file;
   if (req.method === 'GET' && pathname === '/hello') {
+    const client = req.socket.remoteAddress || 'local-client';
+    const now = Date.now();
+    const lastRequest = helloRequestTimes.get(client);
+    const intervalMs = 10_000;
+    if (lastRequest !== undefined && now - lastRequest < intervalMs) {
+      const retryAfter = Math.ceil((intervalMs - (now - lastRequest)) / 1000);
+      res.writeHead(429, {
+        'Content-Type': 'application/json; charset=utf-8',
+        'Access-Control-Allow-Origin': '*',
+        'Retry-After': String(retryAfter),
+      });
+      return res.end(JSON.stringify({ message: 'Rate limit: one request per 10 seconds.', retryAfter }));
+    }
+    helloRequestTimes.set(client, now);
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
     return res.end(JSON.stringify({ message: 'Hello, world!' }));
   }
