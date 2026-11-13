@@ -1,0 +1,9 @@
+{
+  "name": "kofeynya-kopiya",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Учебная копия цепочки недели 10: сайт → форма → n8n → таблица → Telegram",
+  "scripts": {
+    "build": "node build.js"
+  }
+}

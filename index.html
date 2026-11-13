@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Кофейня «Утро» — учебная копия</title>
+  <style>
+    :root { --bg: #f7f1e8; --ink: #2b211b; --muted: #6b5a4e; --accent: #8a4b2a; --line: #e2d6c6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 560px; margin: 0 auto; padding: 24px 16px 48px; }
+    .banner { background: #fff3c4; border: 1px solid #e8d48a; padding: 8px 12px; border-radius: 8px; font-size: 14px; }
+    h1 { font-size: 28px; margin: 20px 0 4px; }
+    .hours { color: var(--muted); margin: 0 0 24px; }
+    form { display: grid; gap: 14px; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 18px; }
+    label { display: grid; gap: 4px; font-size: 15px; }
+    input, textarea { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+    button { font: inherit; font-weight: 600; padding: 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
+    .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
+    #status { min-height: 1.5em; font-size: 15px; }
+  </style>
+</head>
+<body>
+<main>
+  <p class="banner">Учебная копия для недели 10. Не публиковать как сайт настоящего бизнеса.</p>
+  <h1>Кофейня «Утро»</h1>
+  <p class="hours">Будни 7:30–20:00 · выходные 9:00–20:00 · ул. Учебная, 7</p>
+
+  <h2>Заказ выпечки заранее</h2>
+  <form id="zakaz-form">
+    <label>Имя
+      <input name="name" required autocomplete="name">
+    </label>
+    <label>Телефон
+      <input name="phone" required inputmode="tel" autocomplete="tel">
+    </label>
+    <label>Что приготовить
+      <input name="zakaz" required placeholder="например, 2 круассана">
+    </label>
+    <label>Комментарий
+      <textarea name="kommentariy" rows="2" placeholder="к какому времени"></textarea>
+    </label>
+    <!-- Ловушка для ботов (неделя 8, день 4): люди это поле не видят и не заполняют -->
+    <div class="hp" aria-hidden="true">
+      <label>Сайт <input name="website" tabindex="-1" autocomplete="off"></label>
+    </div>
+    <button type="submit">Отправить</button>
+    <p id="status" role="status"></p>
+  </form>
+</main>
+
+<!-- config.js создаётся при сборке из переменной окружения WEBHOOK_URL (см. build.js) -->
+<script src="config.js"></script>
+<script>
+  document.getElementById('zakaz-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var status = document.getElementById('status');
+    var data = Object.fromEntries(new FormData(e.target).entries());
+    try {
+      var res = await fetch(window.WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      // Честная версия: «Спасибо» показываем только при успешном ответе.
+      // Для воспроизведения F01 и F07 эту проверку можно убрать — тогда сайт говорит «Спасибо» всегда.
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      status.textContent = 'Спасибо! Мы свяжемся с вами.';
+      e.target.reset();
+    } catch (err) {
+      status.textContent = 'Не получилось отправить. Позвоните нам: +7 (900) 000-00-00.';
+      console.error('Отправка заявки:', err);
+    }
+  });
+</script>
+</body>
+</html>
