@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swagger — заявки кофейни</title>
+  <link rel="stylesheet" href="/swagger-ui/swagger-ui.css">
+  <style>body { margin: 0; } .swagger-ui .topbar { display: none; }</style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="/swagger-ui/swagger-ui-bundle.js"></script>
+  <script src="/swagger-ui/swagger-ui-standalone-preset.js"></script>
+  <script>
+    SwaggerUIBundle({
+      url: '/openapi.json',
+      dom_id: '#swagger-ui',
+      presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+      layout: 'StandaloneLayout',
+      tryItOutEnabled: true
+    });
+  </script>
+</body>
+</html>

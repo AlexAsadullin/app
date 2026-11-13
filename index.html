@@ -18,6 +18,9 @@
     button { font: inherit; font-weight: 600; padding: 12px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; }
     .hp { position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden; }
     #status { min-height: 1.5em; font-size: 15px; }
+    #status.error { padding: 12px; border: 1px solid #d98b84; border-radius: 8px; background: #fff0ee; color: #74261f; }
+    #status.rate-limit { padding: 16px; border: 2px solid #c76b16; border-radius: 10px; background: #fff4e5; color: #713900; font-weight: 600; }
+    button:disabled { opacity: .65; cursor: wait; }
     .lesson { margin-top: 22px; background: #eaf2f7; border: 1px solid #c6d8e3; border-radius: 10px; padding: 14px; font-size: 14px; }
     .lesson h2 { margin: 0 0 8px; font-size: 18px; }
     .lesson code { overflow-wrap: anywhere; }
@@ -48,7 +51,7 @@
       <label>Сайт <input name="website" tabindex="-1" autocomplete="off"></label>
     </div>
     <button type="submit">Отправить</button>
-    <p id="status" role="status"></p>
+    <p id="status" role="status" aria-live="polite"></p>
   </form>
 
   <section class="lesson" aria-labelledby="lesson-title">
@@ -71,21 +74,52 @@
   document.getElementById('zakaz-form').addEventListener('submit', async function (e) {
     e.preventDefault();
     var status = document.getElementById('status');
+    var submitButton = e.target.querySelector('button[type="submit"]');
     var data = Object.fromEntries(new FormData(e.target).entries());
+    var controller = new AbortController();
+    var timedOut = false;
+    var timeoutId = setTimeout(function () {
+      timedOut = true;
+      controller.abort();
+    }, 10000);
+
+    submitButton.disabled = true;
+    status.className = '';
+    status.textContent = 'Отправляем заявку…';
     try {
       var res = await fetch(appConfig.webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
+        body: JSON.stringify(data),
+        signal: controller.signal
       });
-      // Честная версия: «Спасибо» показываем только при успешном ответе.
-      // Для воспроизведения F01 и F07 эту проверку можно убрать — тогда сайт говорит «Спасибо» всегда.
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      status.textContent = 'Спасибо! Мы свяжемся с вами.';
+      if (res.status === 429) {
+        var retryAfter = res.headers.get('Retry-After');
+        status.className = 'rate-limit';
+        status.setAttribute('role', 'alert');
+        status.textContent = 'Сервис временно ограничил число заявок (429). Не отправляйте заявку повторно вслепую.' +
+          (retryAfter ? ' Подождите ' + retryAfter + ' сек. и сначала проверьте, появилась ли заявка.' : ' Сначала проверьте статус заявки; автоматического повтора нет.');
+        return;
+      }
+      if (!res.ok) {
+        throw new Error('HTTP ' + res.status);
+      }
+      status.className = '';
+      status.setAttribute('role', 'status');
+      status.textContent = 'Заявка принята.';
       e.target.reset();
     } catch (err) {
-      status.textContent = 'Не получилось отправить. Позвоните нам: +7 (900) 000-00-00.';
+      status.className = 'error';
+      status.setAttribute('role', 'alert');
+      if (timedOut) {
+        status.textContent = 'Не получили ответ за 10 секунд. Это не значит, что n8n не принял заявку. Не отправляйте её повторно, пока не проверите выполнение в n8n.';
+      } else {
+        status.textContent = 'Не удалось подтвердить отправку (' + err.message + '). Проверьте выполнение в n8n перед повтором.';
+      }
       console.error('Отправка заявки:', err);
+    } finally {
+      clearTimeout(timeoutId);
+      submitButton.disabled = false;
     }
   });
 </script>

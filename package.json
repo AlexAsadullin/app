@@ -4,6 +4,11 @@
   "private": true,
   "description": "Учебная копия цепочки недели 10: сайт → форма → n8n → таблица → Telegram",
   "scripts": {
-    "build": "node build.js"
+    "build": "node build.js",
+    "local": "npm run build && node local-server.js",
+    "swagger:local": "node local-server.js"
+  },
+  "dependencies": {
+    "swagger-ui-dist": "^5.35.0"
   }
 }
